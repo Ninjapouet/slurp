@@ -33,14 +33,8 @@
     the whole stuff to be statically typechecked and avoid coding
     errors as far as possible.
 
-    When your are satisfied with your API, simply define a server interface
-    using the {!SERVER} module type and give it to the {!make} function:
-    {[
-    # let response = Route.make my_server;;
-    - : string event
-    ]}
-    It returns a simple \[Lwt_\]react event corresponding to the responses
-    answered by the proper route selection according to the server events.
+    When your are satisfied with your API, simply use the {!eval} function
+    in your server implementation.
 
     {1 Details}
 
@@ -63,7 +57,6 @@
     a ['a] OCaml type.
 *)
 
-open Lwt_react
 
 (** The specification type. *)
 type 'a spec
@@ -222,41 +215,10 @@ val post : path:('a, 'b, 'c) path -> id:string -> ?description:string -> 'a -> u
 
     The route module doesn't define its own server implementation in order
     to be as modular as possible. In order to serve the API defined with
-    {!Route}, one must define a {!SERVER} module.
-
-    The particularity of
-    of this module is that it doesn't need abstract function interface
-    for defining such a generic interface is a complicated problem. To
-    avoid this issue, SLURP uses an event based interface having the
-    extremely good property to do not bother at all with the underlying
-    server requirements.
-
-    That is, to serve the SLURP defined API, simply define a {!SERVER}
-    which must have an event for each method (GET, POST and so on...).
-    If you don't want to serve some method operations, for example, simply
-    define the corresponding event to [Lwt_react.E.never].
-
-    Once the server interface defined, one must call the {!make} function
-    to create a response event that the server can use to forward it to
-    the client.
-
-    This event based interface allows the programmer to tune the
-    API response by thread, by method or whatever is needed.
+    {!Route}, one must use the {!eval} function.
 *)
 
-(** Server interface. *)
-module type SERVER = sig
+type meth = [`GET|`POST]
+type data = [`Data of string]
 
-  (** Event for [GET <URL>] calls. *)
-  val get : string event
-
-  (** Event for [POST <URL>] calls with a body, if any. *)
-  val post : (string * string) event
-end
-
-(** Type abbreviation for {!SERVER}. *)
-type server = (module SERVER)
-
-
-(** [make server] returns a response event from [server] interface. *)
-val make : server -> string event
+val eval : meth -> string -> string -> data
