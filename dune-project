@@ -20,3 +20,19 @@
  (authors "Julien Blond <julien.blond@gmail.com>")
  (maintainers "Julien Blond <julien.blond@gmail.com>")
 )
+
+(package
+ (name slurp-cohttp)
+ (synopsis "Cohttp definition for Slurp")
+ (depends
+  (slurp :dev)
+  (lwt (>= 5.2.0))
+  (cohttp-lwt-unix (>= 2.5.1))
+  (cmdliner (>= 1.0.4))
+  (ppx_cmdliner :dev)
+)
+ (tags ("sinatra" "route" "http" "server" "cohttp"))
+ (license "Apache 2.0")
+ (authors "Julien Blond <julien.blond@gmail.com>")
+ (maintainers "Julien Blond <julien.blond@gmail.com>")
+)

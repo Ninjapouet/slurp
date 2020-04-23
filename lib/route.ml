@@ -181,7 +181,7 @@ module Path = struct
 
 end
 
-type meth = Get | Post
+type meth = [`GET|`POST]
 
 module Route = struct
 
@@ -204,10 +204,10 @@ open Route
 type ('a, 'b, 'c) route = ('a, 'b, 'c) Route.t
 
 let get : path:('a, unit, 'b) path -> id:string-> ?description:string -> 'a -> ('a, unit, 'b) route =
-  fun ~path ~id ?description f -> make ~meth:Get ~path ~id ?description f
+  fun ~path ~id ?description f -> make ~meth:`GET ~path ~id ?description f
 
 let post ~path ~id ?description f =
-  make ~meth:Post ~path ~id ?description f
+  make ~meth:`POST ~path ~id ?description f
 
 module M = Map.Make(String)
 
@@ -344,6 +344,7 @@ type registry = {
 let rec pp_registry : registry Fmt.t = fun ppf r ->
   Fmt.pf ppf "%a"
     Fmt.(braces (pair (R.pp pp_registry) ~sep:(unit ";@;") pp_ops)) (r.ns, r.ops)
+[@@warning "-32"]
 
 let registry = make_registry ()
 
@@ -363,8 +364,8 @@ let register : ('a, 'b, 'c) route -> unit = fun r ->
   let pre, path = prefix r.path in
   let reg = lookup_registry registry pre in
   let q = match r.meth with
-    | Get -> reg.ops.get
-    | Post -> reg.ops.post in
+    | `GET -> reg.ops.get
+    | `POST -> reg.ops.post in
   Queue.push (R {route = r; path}) q
 
 let get ~path ~id ?description f =
@@ -381,8 +382,8 @@ let rec lookup : registry -> meth -> string list -> string list * reg Queue.t = 
      | r' -> lookup r' m t
      | exception Not_found ->
        let q = match m with
-         | Get -> r.ops.get
-         | Post -> r.ops.post in
+         | `GET -> r.ops.get
+         | `POST -> r.ops.post in
        l, q)
 
 
@@ -390,12 +391,11 @@ exception Found of string
 
 let found s = raise (Found s)
 
-let eval : meth -> string -> string -> string = fun meth uri body ->
-  Fmt.pr "registry = %a@." pp_registry registry;
+type data = [`Data of string]
+
+let eval : meth -> string -> string -> data = fun meth uri body ->
   let l, t = cut uri in
-  Fmt.pr "l = %a@." Fmt.(brackets (list ~sep:comma string)) l;
   let l, q = lookup registry meth l in
-  Fmt.pr "l = %a@." Fmt.(brackets (list ~sep:comma string)) l;
   try
     Queue.iter (fun (R {route; path}) ->
         match apply l t path (Delay route.func) with
@@ -407,22 +407,22 @@ let eval : meth -> string -> string -> string = fun meth uri body ->
            | exception  _ -> ())
         | exception _ -> ()) q;
     raise Not_found
-  with Found s -> s
+  with Found s -> `Data s
 
 
-open Lwt_react
-
-module type SERVER = sig
-  val get : string event
-  val post : (string * string) event
-end
-
-type server = (module SERVER)
-
-let make : server -> string event = fun (module S) ->
-  let get_effect = E.map (fun url -> eval Get url "") S.get in
-  let post_effect = E.map (fun (url, body) -> eval Post url body) S.post in
-  E.select [get_effect; post_effect]
+(* open Lwt_react
+ *
+ * module type SERVER = sig
+ *   val get : string event
+ *   val post : (string * string) event
+ * end
+ *
+ * type server = (module SERVER)
+ *
+ * let make : server -> string event = fun (module S) ->
+ *   let get_effect = E.map (fun url -> eval Get url "") S.get in
+ *   let post_effect = E.map (fun (url, body) -> eval Post url body) S.post in
+ *   E.select [get_effect; post_effect] *)
 
 
 (* (\* string "burp" @+ int "x" @: *\)
