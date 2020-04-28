@@ -12,7 +12,6 @@ let _ =
               Fmt.pr "%s@." s;
               s))
 
-
 let callback _conn req body =
   let resource = Request.resource req in
   let%lwt body = body |> Cohttp_lwt.Body.to_string in
@@ -25,37 +24,28 @@ let callback _conn req body =
       ~status:`OK
       ~body:Body.(to_string (`String data)) ()
 
-type t = {
+let cfg = Ezcmdliner.create ()
+let port = Ezcmdliner.(register cfg @@ value @@ opt ~default:80 ~conv:int ["p"; "port"])
+let services = Ezcmdliner.(
+    register cfg @@ value @@
+    opt_all ~default:[] ~conv:file ["s"; "services"])
 
-  port : int;
-  [@default 80]
-  [@env "SLURP_PORT"]
-  [@docv "PORT"]
-  (** Sets the server port to use *)
-
-  services : string list;
-  [@env "SLURP_SERVICES"]
-  [@docv "SERVICES"]
-  (** Sets the compiled modules defining interfaces *)
-}
-[@@deriving cmdliner]
-[@@doc "Cohttp server for Slurp services."]
 
 let name = Filename.basename Sys.executable_name
 
-let server t =
+let server () =
   List.iter (fun path -> match Dynlink.loadfile path with
       | () -> ()
       | exception e ->
         Fmt.epr "[%s] error while loading %s: %a@."
           name
           path
-          Fmt.exn e) t.services;
+          Fmt.exn e) (services ());
   Lwt_main.run (
     Server.create
-      ~mode:(`TCP (`Port t.port))
+      ~mode:(`TCP (`Port (port ())))
       (Server.make
          ~callback
          ()))
 
-let () = cmdliner server
+let server = Ezcmdliner.command ~cfg server

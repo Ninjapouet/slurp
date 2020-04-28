@@ -1,8 +1,7 @@
-(executable
- (name server)
+(library
+ (name slurp_cohttp)
  (public_name slurp-cohttp)
- (package slurp-cohttp)
  (modules server)
- (libraries dynlink slurp cohttp cohttp-lwt-unix cmdliner)
- (preprocess (pps lwt_ppx ppx_cmdliner))
+ (libraries dynlink slurp cohttp cohttp-lwt-unix ezcmdliner)
+ (preprocess (pps lwt_ppx))
 )
