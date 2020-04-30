@@ -26,27 +26,27 @@ let callback _conn req body =
 
 let cfg = Ezcmdliner.create ()
 let port = Ezcmdliner.(register cfg @@ value @@ opt ~default:80 ~conv:int ["p"; "port"])
-let services = Ezcmdliner.(
-    register cfg @@ value @@
-    opt_all ~default:[] ~conv:(list file) ["s"; "services"])
 
+let services =
+  let get = Ezcmdliner.(
+      register cfg @@ value @@
+      opt_all ~default:[] ~conv:(list file) ["s"; "services"]) in
+  fun () -> List.concat (get ())
 
 let name = Filename.basename Sys.executable_name
 
-let server () =
-  let services = List.concat @@ services () in
+let server ~port =
   List.iter (fun path -> match Dynlink.loadfile path with
       | () -> ()
       | exception e ->
         Fmt.epr "[%s] error while loading %s: %a@."
           name
           path
-          Fmt.exn e) services;
-  Lwt_main.run (
-    Server.create
-      ~mode:(`TCP (`Port (port ())))
-      (Server.make
-         ~callback
-         ()))
+          Fmt.exn e) (services ());
+  Server.create
+    ~mode:(`TCP (`Port port))
+    (Server.make
+       ~callback
+       ())
 
-let server = Ezcmdliner.command ~cfg server
+let command = Ezcmdliner.command ~cfg (fun () -> server ~port:(port()))
