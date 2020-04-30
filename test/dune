@@ -2,7 +2,7 @@
 (test
  (name test)
  (modules test)
- (deps (:cohttp ../cohttp/server.exe) (:service services/sum.cmxs))
+ (deps (:cohttp ../bin/slurpd_cohttp.exe) (:services (glob_files services/*.cmxs)))
  (libraries fmt lwt lwt.unix)
  (preprocess (pps lwt_ppx))
 )

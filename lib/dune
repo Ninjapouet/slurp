@@ -3,5 +3,5 @@
  (public_name slurp)
  (modules route)
  (libraries str fmt ezjsonm uri lwt_react)
- (preprocess (pps ppx_deriving.std))
+ (preprocess (pps ppx_deriving.std lwt_ppx))
 )

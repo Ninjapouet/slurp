@@ -82,6 +82,28 @@ val json : Ezjsonm.value -> ?description:string -> string -> Ezjsonm.value spec
     name it by [name]. *)
 val html : ?description:string -> string -> string spec
 
+
+(** {2 Lwt}
+
+    Since routes are mostly used with Lwt threads, we provide some wrapping
+    against {!Lwt}. First, the {!Lwt.t} is covariant so it can't be used as it
+    in GADT. Thus, we wrap it in a {!lwt} type and with the {!wrap} function
+    to inject Lwt values into routes.
+
+    Second, we give the {!lwt} combinator allowing to specify the use
+    of a Lwt type in paths. For now, only responses may be a Lwt type
+    because I don't know what's the meaning of using it elsewhere. It's possible
+    to use it in parameters but it will lead to some parse error. *)
+
+(** {!Lwt.t} wrapper. *)
+type 'a lwt
+
+(** [wrap a] wraps the Lwt value [a] into a {!lwt} value. *)
+val wrap : 'a Lwt.t -> 'a lwt
+
+(** [lwt a] returns a {!spec} based on [a] but using a Lwt type. *)
+val lwt : 'a spec -> 'a lwt spec
+
 (** See {!spec}. *)
 type 'a parameter = 'a spec
 
@@ -218,7 +240,12 @@ val post : path:('a, 'b, 'c) path -> id:string -> ?description:string -> 'a -> u
     {!Route}, one must use the {!eval} function.
 *)
 
+(** The allowed methods. *)
 type meth = [`GET|`POST]
+
+(** The kind of returned data. *)
 type data = [`Data of string]
 
-val eval : meth -> string -> string -> data
+(** [eval m resource body] returns a Lwt value resulting in [resource]
+    route lookup using the method [m] and body [body]. *)
+val eval : meth -> string -> string -> data Lwt.t

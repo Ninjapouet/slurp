@@ -22,12 +22,15 @@ let test path res =
 let _ =
   Lwt_main.run begin
     let cohttp = "../cohttp/server.exe" in
-    let service = "services/sum.cmxs" in
+    let services = ["sum"; "sum_lwt"] in
+    let services = String.concat "," @@
+      List.map (fun s -> Filename.concat "services" (s ^ ".cmxs")) services in
     let ic = Unix.open_process_args_in cohttp
-        [|cohttp; "-s"; service; "-p"; "8080"|]in
+        [|cohttp; "-s"; services; "-p"; "8080"|]in
     Lwt_unix.sleep 1.;%lwt
 
     test "sum/2/3" "5";%lwt
+    test "sum_lwt/2/3" "5";%lwt
 
     let pid = Unix.process_in_pid ic in
     Unix.kill pid (-9);

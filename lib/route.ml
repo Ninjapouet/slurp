@@ -20,6 +20,10 @@
 
 type json = Ezjsonm.value
 
+type 'a lwt = Lwt : 'a Lwt.t -> 'a lwt
+let wrap a = Lwt a
+
+
 module Type = struct
 
   type 'a t =
@@ -28,8 +32,9 @@ module Type = struct
     | String : string t
     | JSON : json -> json t
     | HTML : string t
+    | Lwt : 'a t -> 'a lwt t
 
-  let parse : type a. a t -> string -> a = fun t s ->
+  let rec parse : type a. a t -> string -> a = fun t s ->
     match t with
     | Unit -> ()
     | Int -> int_of_string s
@@ -37,6 +42,7 @@ module Type = struct
     | JSON _ -> (* don't validate for now *)
       Ezjsonm.value_from_string s
     | HTML -> s
+    | Lwt a -> wrap @@ Lwt.return @@ parse a s
 
   let pp : type a. a t Fmt.t = fun ppf t ->
     match t with
@@ -45,6 +51,7 @@ module Type = struct
     | String -> Fmt.string ppf "string"
     | JSON _ -> Fmt.string ppf "JSON"
     | HTML -> Fmt.string ppf "HTML"
+    | Lwt _ -> Fmt.string ppf "<lwt>"
   [@@warning "-32"]
 
   let pp_value' : type a. bool -> a t -> a Fmt.t = fun b t -> match t with
@@ -54,6 +61,7 @@ module Type = struct
     | JSON _ -> fun ppf json ->
       Fmt.pf ppf "%s" @@ Ezjsonm.value_to_string ~minify:b json
     | HTML -> Fmt.string
+    | Lwt _ -> fun ppf _ -> Fmt.string ppf "<lwt>"
 
   let pp_value ppf = pp_value' true ppf
   let pp_value_hum ppf = pp_value' false ppf [@@warning "-32"]
@@ -76,6 +84,11 @@ let int = make_spec ~typ:Type.int
 let string = make_spec ~typ:Type.string
 let json schema = make_spec ~typ:Type.(json schema)
 let html = make_spec ~typ:Type.html
+let lwt : 'a spec -> 'a lwt spec = fun a -> {
+    typ = Type.Lwt a.typ;
+    name = a.name;
+    description = a.description;
+  }
 
 type 'a body = 'a spec
 type 'a response = 'a spec
@@ -306,19 +319,60 @@ let rec prefix : type a b c. (a, b, c) path -> string list * (a, b, c) path = fu
     s :: l, p''
   | p -> [], p
 
-let pp_queue p ppf q =
-  Fmt.pf ppf "{@[";
-  Queue.iter (fun a -> Fmt.pf ppf "%a;@;" p a) q;
-  Fmt.pf ppf "@]}"
+module Q = struct
+  type 'a t = {mutable first : 'a cell option; mutable last : 'a cell option}
+  and 'a cell = {content : 'a; mutable next : 'a cell option}
+
+  let create () = {first = None; last = None}
+
+  let push q a = match q.last with
+    | None ->
+      let elt = {content = a; next = None} in
+      q.first <- Some elt;
+      q.last <- Some elt
+    | Some cell ->
+      let elt = {content = a; next = None} in
+      cell.next <- Some elt;
+      q.last <- Some elt
+
+  let rec iter : ('a -> unit) -> 'a t -> unit = fun f q ->
+    match q.first with
+    | None -> ()
+    | Some cell -> iter_cell f cell
+
+  and iter_cell f cell =
+    f cell.content;
+    match cell.next with
+    | None -> ()
+    | Some cell' -> iter_cell f cell'
+
+  let pp pp_content ppf q =
+    Fmt.pf ppf "{@[";
+    iter (fun a -> Fmt.pf ppf "%a;@;" pp_content a) q;
+    Fmt.pf ppf "@]}"
+
+  let rec lookup : 'a t -> ('a -> 'b Lwt.t) -> 'b Lwt.t = fun q f ->
+    match q.first with
+    | None -> Lwt.fail Not_found
+    | Some c -> lookup_cell f c
+
+  and lookup_cell f c =
+    match%lwt f c.content with
+    | v -> Lwt.return v
+    | exception _ ->
+      (match c.next with
+       | None -> Lwt.fail Not_found
+       | Some c' -> lookup_cell f c')
+end
 
 type ops = {
-  get : reg Queue.t [@default Queue.create ()];
-  post : reg Queue.t [@default Queue.create ()];
+  get : reg Q.t [@default Q.create ()];
+  post : reg Q.t [@default Q.create ()];
 }[@@deriving make]
 
 let pp_ops : ops Fmt.t = fun ppf ops ->
   Fmt.pf ppf "%a"
-    Fmt.(braces (pair (pp_queue pp_reg) ~sep:(unit ";@;") (pp_queue pp_reg)))
+    Fmt.(braces (pair (Q.pp pp_reg) ~sep:(unit ";@;") (Q.pp pp_reg)))
     (ops.get, ops.post)
 
 
@@ -366,7 +420,7 @@ let register : ('a, 'b, 'c) route -> unit = fun r ->
   let q = match r.meth with
     | `GET -> reg.ops.get
     | `POST -> reg.ops.post in
-  Queue.push (R {route = r; path}) q
+  Q.push q (R {route = r; path})
 
 let get ~path ~id ?description f =
   register @@ get ~path ~id ?description f
@@ -374,7 +428,7 @@ let get ~path ~id ?description f =
 let post ~path ~id ?description f =
   register @@ post ~path ~id ?description f
 
-let rec lookup : registry -> meth -> string list -> string list * reg Queue.t = fun r m l ->
+let rec lookup : registry -> meth -> string list -> string list * reg Q.t = fun r m l ->
   match l with
   | [] -> raise Not_found
   | h :: t ->
@@ -387,27 +441,32 @@ let rec lookup : registry -> meth -> string list -> string list * reg Queue.t = 
        l, q)
 
 
-exception Found of string
-
-let found s = raise (Found s)
-
 type data = [`Data of string]
 
-let eval : meth -> string -> string -> data = fun meth uri body ->
+let eval : meth -> string -> string -> data Lwt.t = fun meth uri body ->
+  (* Fmt.pr "registry = %a@." pp_registry registry; *)
   let l, t = cut uri in
   let l, q = lookup registry meth l in
-  try
-    Queue.iter (fun (R {route; path}) ->
-        match apply l t path (Delay route.func) with
-        | f ->
-          (match Type.parse route.body.typ body with
-           | b ->
-             let res = Fmt.str "%a" (Type.pp_value route.response.typ) (f b) in
-             found res
-           | exception  _ -> ())
-        | exception _ -> ()) q;
-    raise Not_found
-  with Found s -> `Data s
+  let%lwt data = Q.lookup q (fun (R {route; path}) ->
+      match apply l t path (Delay route.func) with
+      | f ->
+        (match Type.parse route.body.typ body with
+         | b ->
+           (match route.response.typ with
+            | Lwt a ->
+              let (Lwt th) = f b in
+              let%lwt res = th in
+              let str = Fmt.str "%a" (Type.pp_value a) res in
+              Lwt.return str
+            | a ->
+              let res = f b in
+              let str = Fmt.str "%a" (Type.pp_value a) res in
+              Lwt.return str)
+         | exception e ->
+           Lwt.fail e)
+      | exception e ->
+        Lwt.fail e) in
+  Lwt.return @@ `Data data
 
 
 (* open Lwt_react

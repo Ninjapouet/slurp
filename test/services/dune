@@ -2,3 +2,8 @@
  (name sum)
  (modules sum)
  (libraries slurp))
+
+(library
+ (name sum_lwt)
+ (modules sum_lwt)
+ (libraries slurp lwt))
