@@ -1,1 +1,5 @@
-sum/2/3 OK
+sum/2/3 = 5 OK
+sum_lwt/2/3 = 5 OK
+static/hello.txt = Hello OK
+static/other/world.txt = World OK
+env/default = {"foo":42,"bar":"pouet"} OK

@@ -66,6 +66,14 @@ module Type = struct
   let pp_value ppf = pp_value' true ppf
   let pp_value_hum ppf = pp_value' false ppf [@@warning "-32"]
 
+  let rec mime_of_type : type a. a t -> string = function
+    | Unit -> "text/plain"
+    | Int -> "text/plain"
+    | String -> "text/plain"
+    | JSON _ -> "application/json"
+    | HTML -> "text/html"
+    | Lwt a -> mime_of_type a
+
   let unit = Unit
   let int = Int
   let string = String
@@ -446,7 +454,7 @@ let rec lookup : registry -> meth -> string list -> string list * reg Q.t = fun 
        l, select m r)
 
 
-type data = [`Data of string]
+type data = [`Data of string * string]
 
 let ( let* ) m f = match m with
   | v -> f v
@@ -461,7 +469,7 @@ let eval : meth -> string -> string -> data Lwt.t = fun meth uri body ->
   (* Fmt.pr "ressource = %s@\nregistry = %a@." uri pp_registry registry; *)
   let l, t = cut uri in
   let* l, q = lookup registry meth l in
-  let+ data = Q.lookup q (fun (R {route; path}) ->
+  let+ data, mime = Q.lookup q (fun (R {route; path}) ->
       let* f = apply l t path (Delay route.func) in
       let* b = Type.parse route.body.typ body in
       match route.response.typ with
@@ -469,9 +477,9 @@ let eval : meth -> string -> string -> data Lwt.t = fun meth uri body ->
          let (Lwt th) = f b in
          let%lwt res = th in
          let str = Fmt.str "%a" (Type.pp_value a) res in
-         Lwt.return str
+         Lwt.return (str, Type.mime_of_type a)
        | a ->
          let res = f b in
          let str = Fmt.str "%a" (Type.pp_value a) res in
-         Lwt.return str) in
-  Lwt.return @@ `Data data
+         Lwt.return (str, Type.mime_of_type a)) in
+  Lwt.return @@ `Data (data, mime)
