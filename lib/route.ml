@@ -428,109 +428,50 @@ let get ~path ~id ?description f =
 let post ~path ~id ?description f =
   register @@ post ~path ~id ?description f
 
+let select : meth -> registry -> reg Q.t = fun m r ->
+  match m with
+  | `GET -> r.ops.get
+  | `POST -> r.ops.post
+
 let rec lookup : registry -> meth -> string list -> string list * reg Q.t = fun r m l ->
+  (* Fmt.pr "lookup(%a, %a)@."
+   *   pp_registry r
+   *   Fmt.(brackets (list ~sep:(unit ";@;") string)) l; *)
   match l with
-  | [] -> raise Not_found
+  | [] -> l, select m r
   | h :: t ->
     (match R.find h r.ns with
      | r' -> lookup r' m t
      | exception Not_found ->
-       let q = match m with
-         | `GET -> r.ops.get
-         | `POST -> r.ops.post in
-       l, q)
+       l, select m r)
 
 
 type data = [`Data of string]
 
+let ( let* ) m f = match m with
+  | v -> f v
+  | exception e -> Lwt.fail e
+
+let ( let+ ) m f = match%lwt m with
+  | v -> f v
+  | exception e -> Lwt.fail e
+
+
 let eval : meth -> string -> string -> data Lwt.t = fun meth uri body ->
-  (* Fmt.pr "registry = %a@." pp_registry registry; *)
+  (* Fmt.pr "ressource = %s@\nregistry = %a@." uri pp_registry registry; *)
   let l, t = cut uri in
-  let l, q = lookup registry meth l in
-  let%lwt data = Q.lookup q (fun (R {route; path}) ->
-      match apply l t path (Delay route.func) with
-      | f ->
-        (match Type.parse route.body.typ body with
-         | b ->
-           (match route.response.typ with
-            | Lwt a ->
-              let (Lwt th) = f b in
-              let%lwt res = th in
-              let str = Fmt.str "%a" (Type.pp_value a) res in
-              Lwt.return str
-            | a ->
-              let res = f b in
-              let str = Fmt.str "%a" (Type.pp_value a) res in
-              Lwt.return str)
-         | exception e ->
-           Lwt.fail e)
-      | exception e ->
-        Lwt.fail e) in
+  let* l, q = lookup registry meth l in
+  let+ data = Q.lookup q (fun (R {route; path}) ->
+      let* f = apply l t path (Delay route.func) in
+      let* b = Type.parse route.body.typ body in
+      match route.response.typ with
+       | Lwt a ->
+         let (Lwt th) = f b in
+         let%lwt res = th in
+         let str = Fmt.str "%a" (Type.pp_value a) res in
+         Lwt.return str
+       | a ->
+         let res = f b in
+         let str = Fmt.str "%a" (Type.pp_value a) res in
+         Lwt.return str) in
   Lwt.return @@ `Data data
-
-
-(* open Lwt_react
- *
- * module type SERVER = sig
- *   val get : string event
- *   val post : (string * string) event
- * end
- *
- * type server = (module SERVER)
- *
- * let make : server -> string event = fun (module S) ->
- *   let get_effect = E.map (fun url -> eval Get url "") S.get in
- *   let post_effect = E.map (fun (url, body) -> eval Post url body) S.post in
- *   E.select [get_effect; post_effect] *)
-
-
-(* (\* string "burp" @+ int "x" @: *\)
- * let _ =
- *   get
- *     ~id:"sum"
- *     ~path:Path.(path "sum" /: int "x" /: int "y" /? unit --> int "result")
- *     (fun x y () -> x + y);
- *   Fmt.pr "%s@." @@ eval Get "/sum/3/4" "" *)
-
-
-
-
-
- (*
- *
- *
- *
- *   exception Found of r * string list
- *
- *   let find : r Queue.t -> string -> (r * string list) = fun q s ->
- *     let l = prepare s in
- *     try
- *       Queue.iter (fun ((R r) as elt) ->
- *           match match_pattern r.pattern l with
- *           | args -> raise (Found (elt, args))
- *           | exception Not_found -> ()
- *         ) q;
- *       raise Not_found
- *     with Found (r, args) -> (r, args)
- *
- *   let register : t -> ('a, 'b, 'c) route -> unit = fun q r ->
- *     let pattern = pattern_of_path r.path in
- *     let push = Queue.push (R {route = r; pattern}) in
- *     match r.meth with
- *     | Get -> push q.get
- *     | Post -> push q.post
- *
- * end
- *
- * let registry = Registry.empty
- *
- * let register : ('a, 'b, 'c) route -> unit = fun r -> Registry.register registry r
- *
- * let find m path =
- *   match m with
- *   | Get -> Registry.find registry.get path
- *   | Post -> Registry.find registry.post path
- *
- * let get p f = register (get p f)
- *
- * let post p f = register (post p f) *)

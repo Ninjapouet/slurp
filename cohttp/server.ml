@@ -25,13 +25,44 @@ let callback _conn req body =
       ~body:Body.(to_string (`String data)) ()
 
 let cfg = Ezcmdliner.create ()
-let port = Ezcmdliner.(register cfg @@ value @@ opt ~default:80 ~conv:int ["p"; "port"])
+
+let port = Ezcmdliner.(
+    register cfg @@ value @@ opt
+      ~doc:"The server listening port."
+      ~default:80
+      ~conv:int
+      ["p"; "port"])
 
 let services =
   let get = Ezcmdliner.(
-      register cfg @@ value @@
-      opt_all ~default:[] ~conv:(list file) ["s"; "services"]) in
-  fun () -> List.concat (get ())
+      register cfg @@ value @@ opt_all
+        ~docv:"SERVICES"
+        ~doc:"Loads external services $(docv)."
+        ~default:[]
+        ~conv:(list file)
+        ["s"; "services"]) in
+  let l_get () = lazy (List.concat (get ())) in
+  fun () -> Lazy.force (l_get ())
+
+
+let static_dirs =
+  let get = Ezcmdliner.(
+      register cfg @@ value @@ opt_all
+        ~docv:"DIRS"
+        ~doc:"Serve files in $(docv)."
+        ~default:[]
+        ~conv:(list dir)
+        ["static"]) in
+  let l_get () = lazy (List.concat (get ())) in
+  fun () -> Lazy.force (l_get ())
+
+let static_prefix = Ezcmdliner.(
+    register cfg @@ value @@ opt
+      ~docv:"NAME"
+      ~doc:"Static file prefix to use."
+      ~default:"static"
+      ~conv:string
+      ["static-prefix"])
 
 let name = Filename.basename Sys.executable_name
 
@@ -43,6 +74,7 @@ let server ~port =
           name
           path
           Fmt.exn e) (services ());
+  Tools.static ~prefix:(static_prefix ()) (static_dirs ());%lwt
   Server.create
     ~mode:(`TCP (`Port port))
     (Server.make

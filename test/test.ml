@@ -1,19 +1,33 @@
 
+let nothing _ = Lwt.return_unit
+
+let space = Str.regexp " +"
+
+let cmd s = match Str.split space s with
+  | h :: t -> (h, Array.of_list (h :: t))
+  | _ -> assert false
+
 let shell fmt =
-  let k s = fun k ->
-    (* Fmt.pr "shell: %s@." s; *)
-    Lwt_process.(with_process_in (shell s) k) in
+  let k s = fun k -> Lwt_process.(with_process_in (cmd s) k) in
+  Fmt.kstr k fmt
+
+let daemon fmt =
+  let k s =
+    let proc = Lwt_process.(open_process_none
+                              ~stderr:(`FD_copy Unix.stdout)
+                              ~stdout:(`FD_copy Unix.stdout) (cmd s)) in
+    fun () -> proc#kill (-9) in
   Fmt.kstr k fmt
 
 let test path res =
-  shell "curl -s http://localhost:8080/%s" path
+  shell "curl http://localhost:8080/%s" path
     (fun pin ->
        match%lwt Lwt_io.read_line pin#stdout with
        | s when s = res ->
-         Fmt.pr "%s OK@." path;
+         Fmt.pr "%s = %s OK@." path s;
          Lwt.return_unit
-       | _ ->
-         Fmt.pr "%s KO@." path;
+       | s ->
+         Fmt.pr "%s = %s KO@." path s;
          Lwt.return_unit
        | exception e ->
          Fmt.pr "%s %a@." path Fmt.exn e;
@@ -21,18 +35,25 @@ let test path res =
 
 let _ =
   Lwt_main.run begin
-    let cohttp = "../cohttp/server.exe" in
+    let cohttp = "../bin/slurpd_cohttp.exe" in
     let services = ["sum"; "sum_lwt"] in
-    let services = String.concat "," @@
-      List.map (fun s -> Filename.concat "services" (s ^ ".cmxs")) services in
-    let ic = Unix.open_process_args_in cohttp
-        [|cohttp; "-s"; services; "-p"; "8080"|]in
-    Lwt_unix.sleep 1.;%lwt
+    let services = List.map (fun s -> Filename.concat "services" (s ^ ".cmxs")) services in
+    let kill = daemon "%s -s %a -p %i --static %s"
+        cohttp
+        Fmt.(list ~sep:(unit ",") string) services
+        8080
+        "data" in
+    (* let the server start... *)
+    Lwt_unix.sleep 2.;%lwt
 
     test "sum/2/3" "5";%lwt
     test "sum_lwt/2/3" "5";%lwt
+    test "static/hello.txt" "Hello";%lwt
+    test "static/other/world.txt" "World";%lwt
 
-    let pid = Unix.process_in_pid ic in
-    Unix.kill pid (-9);
+    Lwt_unix.sleep 1.;%lwt
+    Fmt.pr "killing daemon...@.";
+    kill ();
+
     Lwt.return_unit
   end
