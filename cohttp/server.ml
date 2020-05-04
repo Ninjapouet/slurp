@@ -19,9 +19,14 @@ let callback _conn req body =
     | (`GET|`POST) as meth -> Route.eval meth resource body
     | _ -> Lwt.fail_with "method" in
   match response with
-  | `Data data ->
+  | `Data (data, mime) ->
+    let headers =
+      let open Header in
+      let headers = init () in
+      add headers "content-type" mime in
     Server.respond_string
       ~status:`OK
+      ~headers
       ~body:Body.(to_string (`String data)) ()
 
 let cfg = Ezcmdliner.create ()

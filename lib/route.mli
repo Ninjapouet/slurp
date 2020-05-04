@@ -244,7 +244,9 @@ val post : path:('a, 'b, 'c) path -> id:string -> ?description:string -> 'a -> u
 type meth = [`GET|`POST]
 
 (** The kind of returned data. *)
-type data = [`Data of string]
+type data = [
+  | `Data of string * string (** The data itself and its mime type. *)
+]
 
 (** [eval m resource body] returns a Lwt value resulting in [resource]
     route lookup using the method [m] and body [body]. *)

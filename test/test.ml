@@ -53,8 +53,8 @@ let _ =
     test "env/default"  "{\"foo\":42,\"bar\":\"pouet\"}";%lwt
 
     Lwt_unix.sleep 1.;%lwt
-    Fmt.pr "killing daemon...@.";
     kill ();
+
 
     Lwt.return_unit
   end
