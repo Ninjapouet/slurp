@@ -34,7 +34,9 @@ let static ?(prefix = "static") paths =
       let%lwt paths = paths_of_dir prefix_path dir in
       List.iter (fun (real_path, route_path) ->
           let open Route in
-          let path = Path.(route_path /? unit --> lwt (string "result")) in
+          let mime = Magic_mime.lookup real_path in
+          let path = Path.(
+              route_path /? unit --> lwt (string ~mime "result")) in
           (* Fmt.pr "%s: %a@." real_path Route.pp_path path; *)
           Route.(get ~id:"" ~path
                    (fun () -> wrap @@ static_content real_path))) paths;

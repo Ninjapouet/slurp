@@ -29,7 +29,7 @@ module Type = struct
   type 'a t =
     | Unit : unit t
     | Int : int t
-    | String : string t
+    | String : string -> string t (* mime payload if needed *)
     | JSON : json -> json t
     | HTML : string t
     | Lwt : 'a t -> 'a lwt t
@@ -38,7 +38,7 @@ module Type = struct
     match t with
     | Unit -> ()
     | Int -> int_of_string s
-    | String -> s
+    | String _ -> s
     | JSON _ -> (* don't validate for now *)
       Ezjsonm.value_from_string s
     | HTML -> s
@@ -48,7 +48,7 @@ module Type = struct
     match t with
     | Unit -> Fmt.string ppf "unit"
     | Int -> Fmt.string ppf "int"
-    | String -> Fmt.string ppf "string"
+    | String _ -> Fmt.string ppf "string"
     | JSON _ -> Fmt.string ppf "JSON"
     | HTML -> Fmt.string ppf "HTML"
     | Lwt _ -> Fmt.string ppf "<lwt>"
@@ -57,7 +57,7 @@ module Type = struct
   let pp_value' : type a. bool -> a t -> a Fmt.t = fun b t -> match t with
     | Unit -> fun _ -> ignore
     | Int -> Fmt.int
-    | String -> Fmt.string
+    | String _ -> Fmt.string
     | JSON _ -> fun ppf json ->
       Fmt.pf ppf "%s" @@ Ezjsonm.value_to_string ~minify:b json
     | HTML -> Fmt.string
@@ -69,14 +69,14 @@ module Type = struct
   let rec mime_of_type : type a. a t -> string = function
     | Unit -> "text/plain"
     | Int -> "text/plain"
-    | String -> "text/plain"
+    | String mime -> mime
     | JSON _ -> "application/json"
     | HTML -> "text/html"
     | Lwt a -> mime_of_type a
 
   let unit = Unit
   let int = Int
-  let string = String
+  let string mime = String mime
   let json schema = JSON schema
   let html = HTML
 end
@@ -89,7 +89,7 @@ type 'a spec = {
 
 let unit = make_spec ~typ:Type.unit ""
 let int = make_spec ~typ:Type.int
-let string = make_spec ~typ:Type.string
+let string ?(mime = "text/plain") = make_spec ~typ:Type.(string mime)
 let json schema = make_spec ~typ:Type.(json schema)
 let html = make_spec ~typ:Type.html
 let lwt : 'a spec -> 'a lwt spec = fun a -> {

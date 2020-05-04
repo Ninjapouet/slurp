@@ -69,9 +69,12 @@ val unit : unit spec
     name it by [name]. *)
 val int : ?description:string -> string -> int spec
 
-(** [string ~description name] defines a [string] spec with [description] and
-    name it by [name]. *)
-val string : ?description:string -> string -> string spec
+(** [string ~mime ~description name] defines a [string] spec with
+    [description] and name it by [name]. As strings may be used to cover
+    various kind of data, one may give an hint on data content
+    by giving explicitly its mime type through [mime] which is
+    "text/plain" by default. *)
+val string : ?mime:string -> ?description:string -> string -> string spec
 
 (** [json scheme ~description name] defines a [json] spec with [description]
     and name it by [name]. Values matching this specification must match the
