@@ -36,7 +36,7 @@ let test path res =
 let _ =
   Lwt_main.run begin
     let cohttp = "../bin/slurpd_cohttp.exe" in
-    let services = ["sum"; "sum_lwt"] in
+    let services = ["sum"; "sum_lwt"; "json"] in
     let services = List.map (fun s -> Filename.concat "services" (s ^ ".cmxs")) services in
     let kill = daemon "%s -s %a -p %i --static %s"
         cohttp
@@ -50,6 +50,7 @@ let _ =
     test "sum_lwt/2/3" "5";%lwt
     test "static/hello.txt" "Hello";%lwt
     test "static/other/world.txt" "World";%lwt
+    test "env/default"  "{\"foo\":42,\"bar\":\"pouet\"}";%lwt
 
     Lwt_unix.sleep 1.;%lwt
     Fmt.pr "killing daemon...@.";

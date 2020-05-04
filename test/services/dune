@@ -7,3 +7,8 @@
  (name sum_lwt)
  (modules sum_lwt)
  (libraries slurp lwt))
+
+(library
+ (name json)
+ (modules json)
+ (libraries slurp lwt ezjsonm))
