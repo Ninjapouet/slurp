@@ -34,8 +34,8 @@ let cfg = Ezcmdliner.create ()
 let port = Ezcmdliner.(
     register cfg @@ value @@ opt
       ~doc:"The server listening port."
-      ~default:80
-      ~conv:int
+      int
+      80
       ["p"; "port"])
 
 let services =
@@ -43,8 +43,8 @@ let services =
       register cfg @@ value @@ opt_all
         ~docv:"SERVICES"
         ~doc:"Loads external services $(docv)."
-        ~default:[]
-        ~conv:(list file)
+        (list file)
+        []
         ["s"; "services"]) in
   let l_get () = lazy (List.concat (get ())) in
   fun () -> Lazy.force (l_get ())
@@ -55,8 +55,8 @@ let static_dirs =
       register cfg @@ value @@ opt_all
         ~docv:"DIRS"
         ~doc:"Serve files in $(docv)."
-        ~default:[]
-        ~conv:(list dir)
+        (list dir)
+        []
         ["static"]) in
   let l_get () = lazy (List.concat (get ())) in
   fun () -> Lazy.force (l_get ())
@@ -65,8 +65,8 @@ let static_prefix = Ezcmdliner.(
     register cfg @@ value @@ opt
       ~docv:"NAME"
       ~doc:"Static file prefix to use."
-      ~default:"static"
-      ~conv:string
+      string
+      "static"
       ["static-prefix"])
 
 let name = Filename.basename Sys.executable_name
