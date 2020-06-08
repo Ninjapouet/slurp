@@ -2,16 +2,6 @@ open Cohttp
 open Cohttp_lwt_unix
 open Slurp
 
-
-
-let _ =
-  Route.(get
-           ~id:"print"
-           ~path:Path.(path "print" /: string "msg" /? unit --> string "result")
-           (fun s () ->
-              Fmt.pr "%s@." s;
-              s))
-
 let callback _conn req body =
   let resource = Request.resource req in
   let%lwt body = body |> Cohttp_lwt.Body.to_string in
