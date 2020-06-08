@@ -61,7 +61,7 @@ let static_prefix = Ezcmdliner.(
 
 let name = Filename.basename Sys.executable_name
 
-let server ~port =
+let server ?(port = port()) () =
   List.iter (fun path -> match Dynlink.loadfile path with
       | () -> ()
       | exception e ->
@@ -76,4 +76,4 @@ let server ~port =
        ~callback
        ())
 
-let command = Ezcmdliner.command ~cfg (fun () -> server ~port:(port()))
+let command = Ezcmdliner.command ~cfg (server)

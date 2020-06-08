@@ -60,7 +60,7 @@ val port : unit -> int
 val services : unit -> string list
 
 (** The underlying server function. *)
-val server : port:int -> unit Lwt.t
+val server : ?port:int -> unit -> unit Lwt.t
 
 (** The Slurp cohttp command specification. *)
 val command : unit Lwt.t command
