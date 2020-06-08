@@ -8,20 +8,27 @@ let handle other conn req body =
   | exception _ ->
     let resource = Request.resource req in
     let%lwt body = body |> Cohttp_lwt.Body.to_string in
-    let%lwt response = match Request.meth req with
-      | (`GET|`POST) as meth -> Route.eval meth resource body
-      | _ -> Lwt.fail_with "method" in
-    match response with
-    | `Data (data, mime) ->
-      let headers =
-        let open Header in
-        let headers = init () in
-        add headers "content-type" mime in
-      let%lwt resp, body = Server.respond_string
-          ~status:`OK
-        ~headers
-        ~body:Body.(to_string (`String data)) () in
+    begin match Request.meth req with
+    | (`GET|`POST) as meth ->
+      begin match%lwt Route.eval meth resource body with
+        | `Data (data, mime) ->
+          let headers =
+            let open Header in
+            let headers = init () in
+            add headers "content-type" mime in
+          let%lwt resp, body = Server.respond_string
+              ~status:`OK
+              ~headers
+              ~body:Body.(to_string (`String data)) () in
+          Lwt.return @@ `Response (resp, body)
+      end
+    | meth ->
+      let%lwt resp, body = Server.respond_error
+          ~status:`Not_implemented
+          ~body:Body.(to_string (`String (Code.string_of_method meth)))
+          () in
       Lwt.return @@ `Response (resp, body)
+    end
 
 let cfg = Ezcmdliner.create ()
 
@@ -69,7 +76,7 @@ let default _ _ _ = Lwt.fail_with "callback"
 
 let server ?(mode = `TCP (`Port (port()))) ?(callback = default) () =
   let conn_closed (_, c) =
-    Fmt.epr "connection %a closed" Sexplib.Sexp.pp (Cohttp.Connection.sexp_of_t c) in
+    Fmt.pr "connection %a closed@." Sexplib.Sexp.pp (Cohttp.Connection.sexp_of_t c) in
   List.iter (fun path -> match Dynlink.loadfile path with
       | () -> ()
       | exception e ->
