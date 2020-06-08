@@ -2,22 +2,26 @@ open Cohttp
 open Cohttp_lwt_unix
 open Slurp
 
-let callback _conn req body =
-  let resource = Request.resource req in
-  let%lwt body = body |> Cohttp_lwt.Body.to_string in
-  let%lwt response = match Request.meth req with
-    | (`GET|`POST) as meth -> Route.eval meth resource body
-    | _ -> Lwt.fail_with "method" in
-  match response with
-  | `Data (data, mime) ->
-    let headers =
-      let open Header in
-      let headers = init () in
-      add headers "content-type" mime in
-    Server.respond_string
-      ~status:`OK
-      ~headers
-      ~body:Body.(to_string (`String data)) ()
+let handle other conn req body =
+  match%lwt other conn req body with
+  | resp -> Lwt.return resp
+  | exception _ ->
+    let resource = Request.resource req in
+    let%lwt body = body |> Cohttp_lwt.Body.to_string in
+    let%lwt response = match Request.meth req with
+      | (`GET|`POST) as meth -> Route.eval meth resource body
+      | _ -> Lwt.fail_with "method" in
+    match response with
+    | `Data (data, mime) ->
+      let headers =
+        let open Header in
+        let headers = init () in
+        add headers "content-type" mime in
+      let%lwt resp, body = Server.respond_string
+          ~status:`OK
+        ~headers
+        ~body:Body.(to_string (`String data)) () in
+      Lwt.return @@ `Response (resp, body)
 
 let cfg = Ezcmdliner.create ()
 
@@ -61,7 +65,11 @@ let static_prefix = Ezcmdliner.(
 
 let name = Filename.basename Sys.executable_name
 
-let server ?(port = port()) () =
+let default _ _ _ = Lwt.fail_with "callback"
+
+let server ?(mode = `TCP (`Port (port()))) ?(callback = default) () =
+  let conn_closed (_, c) =
+    Fmt.epr "connection %a closed" Sexplib.Sexp.pp (Cohttp.Connection.sexp_of_t c) in
   List.iter (fun path -> match Dynlink.loadfile path with
       | () -> ()
       | exception e ->
@@ -71,9 +79,9 @@ let server ?(port = port()) () =
           Fmt.exn e) (services ());
   Tools.static ~prefix:(static_prefix ()) (static_dirs ());%lwt
   Server.create
-    ~mode:(`TCP (`Port port))
-    (Server.make
-       ~callback
-       ())
+    ~mode
+    (Server.make_response_action
+       ~callback:(handle callback)
+       ~conn_closed ())
 
 let command = Ezcmdliner.command ~cfg (server)

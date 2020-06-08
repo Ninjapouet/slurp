@@ -60,7 +60,13 @@ val port : unit -> int
 val services : unit -> string list
 
 (** The underlying server function. *)
-val server : ?port:int -> unit -> unit Lwt.t
+val server :
+  ?mode:Conduit_lwt_unix.server ->
+  ?callback:(Cohttp_lwt_unix.Server.conn ->
+             Cohttp.Request.t ->
+             Cohttp_lwt.Body.t ->
+             Cohttp_lwt_unix.Server.response_action Lwt.t) ->
+  unit -> unit Lwt.t
 
 (** The Slurp cohttp command specification. *)
 val command : unit Lwt.t command
