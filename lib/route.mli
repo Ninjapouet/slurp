@@ -149,8 +149,16 @@ val pp_path : ('a, 'b, 'c) path Fmt.t
 module Path : sig
 
   (** [path s] starts a path with the given root [s]. To defines an empty
-      root prefix simply use "". *)
+      root prefix simply use "".
+
+      @warning [s] must be an atomic file or directory name (ie. without
+      a directory separator like '/' under Unix based systems or
+      '\' under Windows). Use {!cut} in this case. *)
   val path : string -> ('a, 'b, 'c) path -> ('a, 'b, 'c) path
+
+  (** [cut s] splits automatically the given path to its underlying
+      segments to form a valid path. *)
+  val cut : string -> ('a, 'b, 'c) path -> ('a, 'b, 'c) path
 
   (** [a / b] matches the path [a] then [b]. *)
   val ( / ) :

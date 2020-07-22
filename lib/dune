@@ -2,6 +2,6 @@
  (name slurp)
  (public_name slurp)
  (modules route tools)
- (libraries str fmt ezjsonm uri lwt_react lwt lwt.unix magic-mime)
+ (libraries str fmt ezjsonm uri lwt_react lwt lwt.unix magic-mime fpath)
  (preprocess (pps ppx_deriving.std lwt_ppx))
 )

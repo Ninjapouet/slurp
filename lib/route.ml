@@ -167,6 +167,13 @@ module Path = struct
     | Bind (_, q') -> in_out_query q'
     | Final (b, r) -> b, r
 
+  let cut : string -> ('a, 'b, 'c) path -> ('a, 'b, 'c) path = fun s p ->
+    let rec mk = function
+      | [] -> p
+      | "" :: t -> mk t
+      | h :: t -> path h (mk t) in
+    mk Fpath.(v s |> segs)
+
   let ( / ) : (('a, 'b, 'c) path -> ('d, 'b, 'c) path) -> string -> ('a, 'b, 'c) path -> ('d, 'b, 'c) path =
     fun a b -> fun c -> a (path b c)
 
