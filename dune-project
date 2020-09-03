@@ -1,4 +1,5 @@
-(lang dune 2.4)
+(lang dune 2.7)
+(cram enable)
 
 (name slurp)
 
@@ -12,6 +13,7 @@
  (name slurp)
  (synopsis "Sinatra Like URL Route Processing")
  (depends
+  (dune (>= 2.7.0))
   (fmt (>= 0.8.8))
   (ezjsonm (>= 1.1.0))
   (uri (>= 3.1.0)))
@@ -25,6 +27,7 @@
  (name slurp-cohttp)
  (synopsis "Cohttp definition for Slurp")
  (depends
+  (dune (>= 2.7.0))
   (slurp :dev)
   (lwt (>= 5.2.0))
   (cohttp-lwt-unix (>= 2.5.1))

@@ -8,13 +8,14 @@ tags: ["sinatra" "route" "http" "server"]
 homepage: "https://github.com/Ninjapouet/slurp"
 bug-reports: "https://github.com/Ninjapouet/slurp/issues"
 depends: [
-  "dune" {>= "2.4"}
+  "dune" {>= "2.7" & >= "2.7.0"}
   "fmt" {>= "0.8.8"}
   "ezjsonm" {>= "1.1.0"}
   "uri" {>= "3.1.0"}
+  "odoc" {with-doc}
 ]
 build: [
-  ["dune" "subst"] {pinned}
+  ["dune" "subst"] {dev}
   [
     "dune"
     "build"
