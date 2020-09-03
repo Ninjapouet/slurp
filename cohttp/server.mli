@@ -44,29 +44,72 @@
     ]}
 
 
-    {1 API}
+    {1 Functorial interface}
 
+    {2 Configuration}
+
+    The server implementation is parametrized by command line parameter names in order
+    to make it usable in more complex binaries without messing up command line options.
+    The parameters names are defined in {!CFG} with string lists following the
+    {!Cmdliner} convention : short names are one char strings and others strings are long
+    names.
 *)
 
 open Ezcmdliner
 
-(** The Slurp cohttp configuration. *)
-val cfg : cfg
+(** Command line parameter names. *)
+module type CFG = sig
+  (** Port option names. *)
+  val port : string list
 
-(** Returns the port value. *)
-val port : unit -> int
+  (** Service option names. *)
+  val service : string list
+end
 
-(** Returns the services to load. *)
-val services : unit -> string list
+(** {2 Interface}
 
-(** The underlying server function. *)
-val server :
-  ?mode:Conduit_lwt_unix.server ->
-  ?callback:(Cohttp_lwt_unix.Server.conn ->
-             Cohttp.Request.t ->
-             Cohttp_lwt.Body.t ->
-             Cohttp_lwt_unix.Server.response_action Lwt.t) ->
-  unit -> unit Lwt.t
+    The cohhtp slurp interface is given by {!S} which give the {!Ezcmdliner}
+    configuration used which allows adding more parameters if needed. It also
+    gives the parameters accessors and an underlying server
+    implementation which, again, is configurable through specific cohttp
+    stuff.
+*)
 
-(** The Slurp cohttp command specification. *)
-val command : unit Lwt.t command
+(** The cohttp slurp interface. *)
+module type S = sig
+
+  (** The {!Ezcmdliner} configuration. *)
+  val cfg : cfg
+
+  (** Returns the port value. *)
+  val port : unit -> int
+
+  (** Returns the services to load. *)
+  val services : unit -> string list
+
+  (** [server ~mode ~callback ()] launches the cohttp slurp server using the
+      {!Conduit} mode [mode]. [callback] is used to overwrite the default
+      slurp behavior to handle some corner case. If [callback] raises some
+      exception, the default slurp behavior is used. *)
+  val server :
+    ?mode:Conduit_lwt_unix.server ->
+    ?callback:(Cohttp_lwt_unix.Server.conn ->
+               Cohttp.Request.t ->
+               Cohttp_lwt.Body.t ->
+               Cohttp_lwt_unix.Server.response_action Lwt.t) ->
+    unit -> unit Lwt.t
+
+  (** The slurp cohttp command specification. *)
+  val command : unit Lwt.t command
+
+end
+
+(** Cohttp slurp functor. *)
+module Make (C : CFG) : S
+
+(** {1 Default implementation}
+
+    This library gives a default implementation using the "p" or "port"
+    names for the port option and "s" or "service" for the services option. *)
+
+include S

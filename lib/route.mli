@@ -151,7 +151,7 @@ module Path : sig
   (** [path s] starts a path with the given root [s]. To defines an empty
       root prefix simply use "".
 
-      @warning [s] must be an atomic file or directory name (ie. without
+      Be warned that [s] must be an atomic file or directory name (ie. without
       a directory separator like '/' under Unix based systems or
       '\' under Windows). Use {!cut} in this case. *)
   val path : string -> ('a, 'b, 'c) path -> ('a, 'b, 'c) path
