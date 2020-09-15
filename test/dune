@@ -1,6 +1,11 @@
 
+
 (cram
+
+ ;; under osx, opam [sandbox?] can't bind ports... don't know why.
+ (enabled_if (<> %{system} macosx))
+
  (deps
-   ../bin/slurpd_cohttp.exe
+  (file ../bin/slurpd_cohttp.exe)
   (glob_files services/*.cmxs)
   (source_tree data)))

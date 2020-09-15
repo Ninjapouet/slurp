@@ -98,8 +98,9 @@ module Make (C : CFG) = struct
   let default _ _ _ = Lwt.fail_with "callback"
 
   let server ?(mode = `TCP (`Port (port()))) ?(callback = default) () =
-    let conn_closed (_, c) =
-      Fmt.pr "connection %a closed@." Sexplib.Sexp.pp (Cohttp.Connection.sexp_of_t c) in
+    let conn_closed (_, _c) =
+      (* Fmt.pr "connection %a closed@." Sexplib.Sexp.pp (Cohttp.Connection.sexp_of_t c) *)
+      () in
     List.iter (fun path -> match Dynlink.loadfile path with
         | () -> ()
         | exception e ->

@@ -1,6 +1,6 @@
 (library
  (name slurp_cohttp)
- (public_name slurp-cohttp)
+ (public_name slurp-cohttp.lib)
  (modules server)
  (libraries dynlink slurp cohttp cohttp-lwt-unix ezcmdliner)
  (preprocess (pps lwt_ppx))

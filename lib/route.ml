@@ -83,9 +83,15 @@ end
 
 type 'a spec = {
   typ : 'a Type.t;
-  name : string [@main];
-  description : string [@default ""];
-}[@@deriving make]
+  name : string;
+  description : string;
+}
+
+let make_spec ~typ ?(description = "") name = {
+  typ;
+  name;
+  description;
+}
 
 let unit = make_spec ~typ:Type.unit ""
 let int = make_spec ~typ:Type.int
@@ -218,14 +224,21 @@ module Route = struct
     path : ('a, 'b, 'c) path;
     body : 'b body;
     response : 'c response;
-    func : 'a [@main];
+    func : 'a;
     id : string;
-    description : string [@default ""];
-  }[@@deriving make]
+    description : string;
+  }
 
-  let make ~meth ~path ~id ?description func =
-    let body, response = Path.in_out path in
-    make ~meth ~path ~body ~response ~id ?description func
+  let make ~meth ~path ~id ?(description = "") func =
+    let body, response = Path.in_out path in {
+      meth;
+      path;
+      body;
+      response;
+      func;
+      id;
+      description;
+    }
 end
 open Route
 
@@ -381,9 +394,11 @@ module Q = struct
 end
 
 type ops = {
-  get : reg Q.t [@default Q.create ()];
-  post : reg Q.t [@default Q.create ()];
-}[@@deriving make]
+  get : reg Q.t;
+  post : reg Q.t;
+}
+
+let make_ops ?(get = Q.create ()) ?(post = Q.create ()) () = {get; post}
 
 let pp_ops : ops Fmt.t = fun ppf ops ->
   Fmt.pf ppf "%a"
@@ -406,9 +421,11 @@ end
    we follow that semantic and operations will be searched first
    in namespaces then in ops. *)
 type registry = {
-  mutable ns : registry R.t [@default R.empty];
-  mutable ops : ops [@default make_ops ()];
-}[@@deriving make]
+  mutable ns : registry R.t;
+  mutable ops : ops;
+}
+
+let make_registry ?(ns = R.empty) ?(ops = make_ops ()) () = {ns; ops}
 
 let rec pp_registry : registry Fmt.t = fun ppf r ->
   Fmt.pf ppf "%a"
