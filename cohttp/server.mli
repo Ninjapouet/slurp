@@ -2,57 +2,64 @@
 
     {1 Quickstart}
 
-    The Slurp cohttp implementation is based on {!Ezcmdliner} library and quite
-    straightforward. It simply adds some options (not enough yet though) to
-    configure cohttp and simply calls the {!Slurp.Route.eval} function.
+    To use slurp with the cohttp backend, you can simply call the
+    [slurp-cohttp.server] binary coming with the package. However, if you
+    need to tune the server implementation, you can use the server
+    extensible definition.
 
-    Basically, there are two ways of using the Slurp cohttp server depending
-    on extension needness. If you don't need to add custom
-    features to the server definition, simply use the [slurpd-cohttp.server]
-    binary.
+    {1 Extension}
 
-    If you're not satisfied with the default configuration options proposed or
-    if you want to extend or rewrote the server, you can use the API below
-    to do it.
-
-    For example, if you want the server to listen another port you can do
-    the following stuff. First, retrieve the server configuration to inherit
-    its command line:
+    Most of the time, the server is launched together with other services
+    that may already bind the slurp default option names. To avoid any
+    conflict, the server comes with a functorial definition based on
+    option names. The parameters names are defined with string lists
+    following the {{:https://erratique.ch/logiciel/cmdliner}Cmdliner}
+    convention: short names are one char strings and others strings are long
+    names. For example, if you want to rename the "--port" option,
+    simply reinstanciate the server definition with a custom configuration:
     {[
-      let cfg = Slurp_cohttp.Server.cfg
+      open Slurp_cohttp
+
+      module My_configuration = struct
+        let port = ["my-port"]
+        let service = Default.service
+      end
+
+      module My_server = Make(My_configuration)
+
+      let _ = Ezcmdliner.run My_server.command
     ]}
-    Then, add the command line options. Here, we add an alt port option:
+
+    the other extension oftenly used is adding new options for various
+    services added with the custom REST API. Adding options is
+    allowed by the {{:https://github.com/Ninjapouet/ezcmdliner}Ezcmdliner}
+    interface. For example, we can add the option [foo] simply by
+    registering it with:
     {[
-      let alt_port = Ezcmdliner.(register @@ value @@ opt
-        ~doc:"Alternative listening port."
-        ~conv:int
-        ~default:3000
-        ["alt-port"])
+      let foo = Ezcmdliner.(
+          register My_server.cfg @@ value @@ opt
+            ~doc:"My awesome option"
+            int
+            42
+            ["foo"])
     ]}
-    This adds the option to the configuration [cfg]. See the {!Ezcmdliner}
-    documentation for more informations. The registering action returns
-    a getter to the option value (typically [unit -> 'a] where ['a]
-    depends on the converter [conv], here an [int]). Then you can
-    extend or redefine the server definition:
+    [foo ()] will then return the [foo] option value at runtime.
+
+    More subtle extensions are also available by redefining the
+    [My_server.command] value to add some custom behavior to the resulting
+    binary. For example:
     {[
       let command = Ezcmdliner.({
-          Slurp_cohttp.Server.command with
+          My_server.command with
           cmd = fun () -> Lwt.join [
-              Slurp_cohttp.Server.command.cmd (); (* Legacy listening on port *)
-              (fun () -> Slurp_cohttp.Server.server ~port:(alt_port ())); (* Listening on alt port *)
+              My_server.command.cmd (); (* Legacy server commmand *)
+              (fun () -> print_endline "Hello there!"; Lwt.return_unit);
+          ];
         })
     ]}
+    will add the trace "Hello there!" on server run.
 
-
-    {1 Functorial interface}
-
-    {2 Configuration}
-
-    The server implementation is parametrized by command line parameter names in order
-    to make it usable in more complex binaries without messing up command line options.
-    The parameters names are defined in {!CFG} with string lists following the
-    {!Cmdliner} convention : short names are one char strings and others strings are long
-    names.
+    {1 API}
 *)
 
 open Ezcmdliner
@@ -103,6 +110,9 @@ module type S = sig
   val command : unit Lwt.t command
 
 end
+
+(** Default configuration. *)
+module Default : CFG
 
 (** Cohttp slurp functor. *)
 module Make (C : CFG) : S
