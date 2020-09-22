@@ -5,7 +5,7 @@
 
 (generate_opam_files true)
 
-(version 0.1.1)
+(version 0.1.2)
 
 (source (github Ninjapouet/slurp))
 
@@ -35,9 +35,9 @@
  (name slurp-cohttp)
  (synopsis "Cohttp definition for Slurp")
  (depends
-  (slurp (= 0.1.1))
+  (slurp (= 0.1.2))
   (cohttp-lwt-unix (>= 2.5.1))
-  (ezcmdliner (>= 0.1.1))
+  (clim (>= 0.2.0))
 )
  (tags ("sinatra" "route" "http" "server" "cohttp"))
  (license "Apache 2.0")

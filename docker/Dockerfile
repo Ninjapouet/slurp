@@ -7,6 +7,7 @@ run apk add m4
 # update opam
 user opam
 run git pull
+run opam repository add aux -k git https://github.com/Ninjapouet/opam-repository 2
 run opam update
 run opam upgrade
 

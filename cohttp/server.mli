@@ -27,16 +27,16 @@
 
       module My_server = Make(My_configuration)
 
-      let _ = Ezcmdliner.run My_server.command
+      let _ = Clim.run My_server.command
     ]}
 
     the other extension oftenly used is adding new options for various
     services added with the custom REST API. Adding options is
-    allowed by the {{:https://github.com/Ninjapouet/ezcmdliner}Ezcmdliner}
+    allowed by the {{:https://github.com/Ninjapouet/clim}Clim}
     interface. For example, we can add the option [foo] simply by
     registering it with:
     {[
-      let foo = Ezcmdliner.(
+      let foo = Clim.(
           register My_server.cfg @@ value @@ opt
             ~doc:"My awesome option"
             int
@@ -49,7 +49,7 @@
     [My_server.command] value to add some custom behavior to the resulting
     binary. For example:
     {[
-      let command = Ezcmdliner.({
+      let command = Clim.({
           My_server.command with
           cmd = fun () -> Lwt.join [
               My_server.command.cmd (); (* Legacy server commmand *)
@@ -62,7 +62,7 @@
     {1 API}
 *)
 
-open Ezcmdliner
+open Clim
 
 (** Command line parameter names. *)
 module type CFG = sig
@@ -75,7 +75,7 @@ end
 
 (** {2 Interface}
 
-    The cohhtp slurp interface is given by {!S} which give the {!Ezcmdliner}
+    The cohhtp slurp interface is given by {!S} which give the {!Clim}
     configuration used which allows adding more parameters if needed. It also
     gives the parameters accessors and an underlying server
     implementation which, again, is configurable through specific cohttp
@@ -85,7 +85,7 @@ end
 (** The cohttp slurp interface. *)
 module type S = sig
 
-  (** The {!Ezcmdliner} configuration. *)
+  (** The {!Clim} configuration. *)
   val cfg : cfg
 
   (** Returns the port value. *)

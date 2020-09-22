@@ -1,7 +1,7 @@
 open Cohttp
 open Cohttp_lwt_unix
 open Slurp
-open Ezcmdliner
+open Clim
 
 module type CFG = sig
   val port : string list
@@ -53,9 +53,9 @@ module Make (C : CFG) = struct
           Lwt.return @@ `Response (resp, body)
       end
 
-  let cfg = Ezcmdliner.create ()
+  let cfg = Clim.create ()
 
-  let port = Ezcmdliner.(
+  let port = Clim.(
       register cfg @@ value @@ opt
         ~doc:"The server listening port."
         int
@@ -63,7 +63,7 @@ module Make (C : CFG) = struct
         C.port)
 
   let services =
-    let get = Ezcmdliner.(
+    let get = Clim.(
         register cfg @@ value @@ opt_all
           ~docv:"SERVICES"
           ~doc:"Loads external services $(docv)."
@@ -75,7 +75,7 @@ module Make (C : CFG) = struct
 
 
   let static_dirs =
-    let get = Ezcmdliner.(
+    let get = Clim.(
         register cfg @@ value @@ opt_all
           ~docv:"DIRS"
           ~doc:"Serve files in $(docv)."
@@ -85,7 +85,7 @@ module Make (C : CFG) = struct
     let l_get () = lazy (List.concat (get ())) in
     fun () -> Lazy.force (l_get ())
 
-  let static_prefix = Ezcmdliner.(
+  let static_prefix = Clim.(
       register cfg @@ value @@ opt
         ~docv:"NAME"
         ~doc:"Static file prefix to use."
@@ -115,7 +115,7 @@ module Make (C : CFG) = struct
          ~callback:(handle callback)
          ~conn_closed ())
 
-  let command = Ezcmdliner.command ~cfg (server)
+  let command = Clim.command ~cfg (server)
 end
 
 module Default = struct

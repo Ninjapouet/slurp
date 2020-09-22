@@ -1,0 +1,4 @@
+(rule
+ (deps (:dockerfile Dockerfile))
+ (alias docker)
+ (action (run docker build ../. -f %{dockerfile} -t slurp)))
