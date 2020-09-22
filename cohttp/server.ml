@@ -118,9 +118,9 @@ module Make (C : CFG) = struct
   let command = Ezcmdliner.command ~cfg (server)
 end
 
-module Default = Make(struct
-    let port = ["p"; "port"]
-    let service = ["s"; "service"]
-  end)
+module Default = struct
+  let port = ["p"; "port"]
+  let service = ["s"; "service"]
+end
 
-include Default
+include Make(Default)

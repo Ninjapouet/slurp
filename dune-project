@@ -5,7 +5,7 @@
 
 (generate_opam_files true)
 
-(version 0.1.0)
+(version 0.1.1)
 
 (source (github Ninjapouet/slurp))
 
@@ -35,7 +35,7 @@
  (name slurp-cohttp)
  (synopsis "Cohttp definition for Slurp")
  (depends
-  (slurp (>= 0.1.0))
+  (slurp (= 0.1.1))
   (cohttp-lwt-unix (>= 2.5.1))
   (ezcmdliner (>= 0.1.1))
 )
