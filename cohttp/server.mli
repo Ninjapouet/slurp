@@ -5,14 +5,16 @@
     To use slurp with the cohttp backend, you can simply call the
     [slurp-cohttp.server] binary coming with the package. However, if you
     need to tune the server implementation, you can use the server
-    extensible definition.
+    extensible definition inherited from {!Clim.cli}.
 
     {1 Extension}
 
     Most of the time, the server is launched together with other services
     that may already bind the slurp default option names. To avoid any
-    conflict, the server comes with a functorial definition based on
-    option names. The parameters names are defined with string lists
+    conflict, the server CLI is defined from {!Clim.cli} and option names
+    are overloadable methods.
+
+    The parameters names are defined with string lists
     following the {{:https://erratique.ch/logiciel/cmdliner}Cmdliner}
     convention: short names are one char strings and others strings are long
     names. For example, if you want to rename the "--port" option,
@@ -20,14 +22,12 @@
     {[
       open Slurp_cohttp
 
-      module My_configuration = struct
-        let port = ["my-port"]
-        let service = Default.service
+      let my_server = object
+        inherit cohttp
+        method! port_names = ["my-port"]
       end
 
-      module My_server = Make(My_configuration)
-
-      let _ = Clim.run My_server.command
+      let _ = Lwt_main.run my_server#run
     ]}
 
     the other extension oftenly used is adding new options for various
@@ -36,90 +36,69 @@
     interface. For example, we can add the option [foo] simply by
     registering it with:
     {[
-      let foo = Clim.(
-          register My_server.cfg @@ value @@ opt
+      let my_server = object
+         ...
+         val foo = 42
+         initializer
+           self#arg Clim.(value @@ opt
             ~doc:"My awesome option"
             int
             42
-            ["foo"])
+            ["foo"]) (fun v -> foo <- v)
+         ...
+      end
     ]}
-    [foo ()] will then return the [foo] option value at runtime.
+    [foo] will then contain the [foo] option value at runtime.
 
     More subtle extensions are also available by redefining the
     [My_server.command] value to add some custom behavior to the resulting
     binary. For example:
     {[
-      let command = Clim.({
-          My_server.command with
-          cmd = fun () -> Lwt.join [
-              My_server.command.cmd (); (* Legacy server commmand *)
-              (fun () -> print_endline "Hello there!"; Lwt.return_unit);
-          ];
-        })
+      let my_server = object(self)
+        inherit cohttp as super
+        ...
+        method! entrypoint () =
+           Lwt.join [
+             super#entrypoint ();
+             (fun () -> print_endline "Hello there!"; Lwt.return_unit);
+           ]
+        ...
     ]}
     will add the trace "Hello there!" on server run.
 
     {1 API}
 *)
 
-open Clim
+(** A customizable SLURP cohttp definition. *)
+class cohttp : object
+  inherit [_] Clim.cli
 
-(** Command line parameter names. *)
-module type CFG = sig
-  (** Port option names. *)
-  val port : string list
+  (** The listening port *)
+  val port : int
 
-  (** Service option names. *)
-  val service : string list
+  (** SLURP services to load. *)
+  val services : string list
+
+  (** Static directories to serve. *)
+  val static_dirs : string list
+
+  (** Prefix used to serve static content. *)
+  val static_prefix : string
+
+  (** Following methods define the corresponding CLI option names. *)
+  method port_names : string list
+  method services_names : string list
+  method static_dirs_names : string list
+  method static_prefix_names : string list
+
+  (** Callbakc called before the SLURP routing if any operation must be
+      done before. *)
+  method callback :
+    Cohttp_lwt_unix.Server.conn ->
+    Cohttp_lwt_unix.Request.t ->
+    Cohttp_lwt.Body.t ->
+    Cohttp_lwt_unix.Server.response_action Lwt.t
+
+  (** Launches the SLURP cohttp server. *)
+  method entrypoint : unit -> unit Lwt.t
 end
-
-(** {2 Interface}
-
-    The cohhtp slurp interface is given by {!S} which give the {!Clim}
-    configuration used which allows adding more parameters if needed. It also
-    gives the parameters accessors and an underlying server
-    implementation which, again, is configurable through specific cohttp
-    stuff.
-*)
-
-(** The cohttp slurp interface. *)
-module type S = sig
-
-  (** The {!Clim} configuration. *)
-  val cfg : cfg
-
-  (** Returns the port value. *)
-  val port : unit -> int
-
-  (** Returns the services to load. *)
-  val services : unit -> string list
-
-  (** [server ~mode ~callback ()] launches the cohttp slurp server using the
-      {!Conduit} mode [mode]. [callback] is used to overwrite the default
-      slurp behavior to handle some corner case. If [callback] raises some
-      exception, the default slurp behavior is used. *)
-  val server :
-    ?mode:Conduit_lwt_unix.server ->
-    ?callback:(Cohttp_lwt_unix.Server.conn ->
-               Cohttp.Request.t ->
-               Cohttp_lwt.Body.t ->
-               Cohttp_lwt_unix.Server.response_action Lwt.t) ->
-    unit -> unit Lwt.t
-
-  (** The slurp cohttp command specification. *)
-  val command : unit Lwt.t command
-
-end
-
-(** Default configuration. *)
-module Default : CFG
-
-(** Cohttp slurp functor. *)
-module Make (C : CFG) : S
-
-(** {1 Default implementation}
-
-    This library gives a default implementation using the "p" or "port"
-    names for the port option and "s" or "service" for the services option. *)
-
-include S

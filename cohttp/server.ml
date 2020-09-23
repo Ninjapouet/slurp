@@ -1,103 +1,96 @@
 open Cohttp
 open Cohttp_lwt_unix
 open Slurp
-open Clim
 
-module type CFG = sig
-  val port : string list
-  val service : string list
-end
+let handle other conn req body =
+  match%lwt other conn req body with
+  | resp -> Lwt.return resp
+  | exception _ ->
+    let resource = Request.resource req in
+    let%lwt body = body |> Cohttp_lwt.Body.to_string in
+    begin match Request.meth req with
+      | (`GET|`POST) as meth ->
+        begin match%lwt Route.eval meth resource body with
+          | `Data (data, mime) ->
+            let headers =
+              let open Header in
+              let headers = init () in
+              add headers "content-type" mime in
+            let%lwt resp, body = Server.respond_string
+                ~status:`OK
+                ~headers
+                ~body:Body.(to_string (`String data)) () in
+            Lwt.return @@ `Response (resp, body)
+        end
+      | meth ->
+        let%lwt resp, body = Server.respond_error
+            ~status:`Not_implemented
+            ~body:Body.(to_string (`String (Code.string_of_method meth)))
+            () in
+        Lwt.return @@ `Response (resp, body)
+    end
 
-module type S = sig
-  val cfg : cfg
-  val port : unit -> int
-  val services : unit -> string list
-  val server :
-    ?mode:Conduit_lwt_unix.server ->
-    ?callback:(Cohttp_lwt_unix.Server.conn ->
-               Cohttp.Request.t ->
-               Cohttp_lwt.Body.t ->
-               Cohttp_lwt_unix.Server.response_action Lwt.t) ->
-    unit -> unit Lwt.t
-  val command : unit Lwt.t command
-end
+class cohttp = object(self)
 
+  inherit [_] Clim.cli
 
-module Make (C : CFG) = struct
+  val mutable port = 80
+  method port_names = ["p"; "port"]
 
-  let handle other conn req body =
-    match%lwt other conn req body with
-    | resp -> Lwt.return resp
-    | exception _ ->
-      let resource = Request.resource req in
-      let%lwt body = body |> Cohttp_lwt.Body.to_string in
-      begin match Request.meth req with
-        | (`GET|`POST) as meth ->
-          begin match%lwt Route.eval meth resource body with
-            | `Data (data, mime) ->
-              let headers =
-                let open Header in
-                let headers = init () in
-                add headers "content-type" mime in
-              let%lwt resp, body = Server.respond_string
-                  ~status:`OK
-                  ~headers
-                  ~body:Body.(to_string (`String data)) () in
-              Lwt.return @@ `Response (resp, body)
-          end
-        | meth ->
-          let%lwt resp, body = Server.respond_error
-              ~status:`Not_implemented
-              ~body:Body.(to_string (`String (Code.string_of_method meth)))
-              () in
-          Lwt.return @@ `Response (resp, body)
-      end
+  val mutable services = []
+  method services_names = ["s"; "services"]
 
-  let cfg = Clim.create ()
+  val mutable static_dirs = []
+  method static_dirs_names = ["static"]
 
-  let port = Clim.(
-      register cfg @@ value @@ opt
-        ~doc:"The server listening port."
-        int
-        80
-        C.port)
+  val mutable static_prefix = "static"
+  method static_prefix_names = ["static-prefix"]
 
-  let services =
-    let get = Clim.(
-        register cfg @@ value @@ opt_all
-          ~docv:"SERVICES"
-          ~doc:"Loads external services $(docv)."
-          (list file)
-          []
-          C.service) in
-    let l_get () = lazy (List.concat (get ())) in
-    fun () -> Lazy.force (l_get ())
+  initializer
+    let open Clim in
+    (* port option *)
+    self#arg
+        (value @@ opt
+           ~doc:"The server listening port."
+           int
+           port
+           self#port_names)
+        (fun p -> port <- p);
 
+    (* services option *)
+    self#arg
+      (value @@ opt_all
+         ~docv:"SERVICES"
+         ~doc:"Loads external services $(docv)."
+         (list file)
+         []
+         self#services_names)
+      (fun l -> services <- List.concat l);
 
-  let static_dirs =
-    let get = Clim.(
-        register cfg @@ value @@ opt_all
-          ~docv:"DIRS"
-          ~doc:"Serve files in $(docv)."
-          (list dir)
-          []
-          ["static"]) in
-    let l_get () = lazy (List.concat (get ())) in
-    fun () -> Lazy.force (l_get ())
+    (* static dirs option *)
+    self#arg
+      (value @@ opt_all
+         ~docv:"DIRS"
+         ~doc:"Serve files in $(docv)."
+         (list dir)
+         []
+         self#static_dirs_names)
+      (fun l -> static_dirs <- List.concat l);
 
-  let static_prefix = Clim.(
-      register cfg @@ value @@ opt
-        ~docv:"NAME"
-        ~doc:"Static file prefix to use."
-        string
-        "static"
-        ["static-prefix"])
+    (* static prefix option *)
+    self#arg
+      (value @@ opt
+         ~docv:"NAME"
+         ~doc:"Static file prefix to use."
+         string
+         "static"
+         self#static_prefix_names)
+      (fun s -> static_prefix <- s)
 
-  let name = Filename.basename Sys.executable_name
+  method callback _ _ _ = Lwt.fail_with "callback"
 
-  let default _ _ _ = Lwt.fail_with "callback"
-
-  let server ?(mode = `TCP (`Port (port()))) ?(callback = default) () =
+  method entrypoint () =
+    let mode = `TCP (`Port port) in
     let conn_closed (_, _c) =
       (* Fmt.pr "connection %a closed@." Sexplib.Sexp.pp (Cohttp.Connection.sexp_of_t c) *)
       () in
@@ -105,22 +98,14 @@ module Make (C : CFG) = struct
         | () -> ()
         | exception e ->
           Fmt.epr "[%s] error while loading %s: %a@."
-            name
+            self#name
             path
-            Fmt.exn e) (services ());
-    Tools.static ~prefix:(static_prefix ()) (static_dirs ());%lwt
+            Fmt.exn e) services;
+    Tools.static ~prefix:static_prefix static_dirs;%lwt
     Server.create
       ~mode
       (Server.make_response_action
-         ~callback:(handle callback)
+         ~callback:(handle self#callback)
          ~conn_closed ())
 
-  let command = Clim.command ~cfg (server)
 end
-
-module Default = struct
-  let port = ["p"; "port"]
-  let service = ["s"; "service"]
-end
-
-include Make(Default)
