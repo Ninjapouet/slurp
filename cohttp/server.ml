@@ -62,7 +62,7 @@ class cohttp = object(self)
       (value @@ opt_all
          ~docv:"SERVICES"
          ~doc:"Loads external services $(docv)."
-         (list file)
+         (list string)
          []
          self#services_names)
       (fun l -> services <- List.concat l);
@@ -96,9 +96,12 @@ class cohttp = object(self)
       () in
     List.iter (fun path -> match Dynlink.loadfile path with
         | () -> ()
+        | exception Dynlink.Error (Dynlink.Cannot_open_dynamic_library _) ->
+          (* the related exception is platform specific so, to ensure some determinism,
+             we regroup all underlying errors into the same message. *)
+          Fmt.epr "[error] cannot open %s@." path
         | exception e ->
-          Fmt.epr "[%s] error while loading %s: %a@."
-            self#name
+          Fmt.epr "[error] while loading %s: %a@."
             path
             Fmt.exn e) services;
     Tools.static ~prefix:static_prefix static_dirs;%lwt

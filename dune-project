@@ -1,5 +1,6 @@
 (lang dune 2.7)
 (cram enable)
+(allow_approximate_merlin)
 
 (name slurp)
 
