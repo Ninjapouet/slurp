@@ -99,6 +99,10 @@ class cohttp : object
     Cohttp_lwt.Body.t ->
     Cohttp_lwt_unix.Server.response_action Lwt.t
 
+  (** Configure the server mode. By default, it uses
+      TCP on specified port. *)
+  method mode : Conduit_lwt_unix.server
+
   (** Launches the SLURP cohttp server. *)
   method entrypoint : unit -> unit Lwt.t
 end

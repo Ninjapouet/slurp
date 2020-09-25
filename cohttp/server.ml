@@ -89,8 +89,9 @@ class cohttp = object(self)
 
   method callback _ _ _ = Lwt.fail_with "callback"
 
+  method mode = `TCP (`Port port)
+
   method entrypoint () =
-    let mode = `TCP (`Port port) in
     let conn_closed (_, _c) =
       (* Fmt.pr "connection %a closed@." Sexplib.Sexp.pp (Cohttp.Connection.sexp_of_t c) *)
       () in
@@ -106,7 +107,7 @@ class cohttp = object(self)
             Fmt.exn e) services;
     Tools.static ~prefix:static_prefix static_dirs;%lwt
     Server.create
-      ~mode
+      ~mode:self#mode
       (Server.make_response_action
          ~callback:(handle self#callback)
          ~conn_closed ())
