@@ -1,7 +1,0 @@
-(executable
- (name slurpd_cohttp)
- (public_name slurp-cohttp.server)
- (modules slurpd_cohttp)
- (package slurp-cohttp)
- (libraries slurp-cohttp.lib)
-)

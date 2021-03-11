@@ -3,7 +3,7 @@
     {1 Quickstart}
 
     To use slurp with the cohttp backend, you can simply call the
-    [slurp-cohttp.server] binary coming with the package. However, if you
+    [slurp-cohttp] binary coming with the so called package. However, if you
     need to tune the server implementation, you can use the server
     extensible definition inherited from {!Clim.cli}.
 

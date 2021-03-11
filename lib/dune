@@ -1,7 +1,0 @@
-(library
- (name slurp)
- (public_name slurp)
- (modules route tools)
- (libraries str fmt ezjsonm uri lwt_react lwt lwt.unix magic-mime fpath)
- (preprocess (pps lwt_ppx))
-)
