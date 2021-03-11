@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Slurp_cohttp (slurp_cohttp_lib.Slurp_cohttp)</title><link rel="stylesheet" href="../../odoc.css"/><meta charset="utf-8"/><meta name="generator" content="odoc 1.5.2"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><script src="../../highlight.pack.js"></script><script>hljs.initHighlightingOnLoad();</script></head><body><div class="content"><header><nav><a href="../index.html">Up</a> – <a href="../index.html">slurp_cohttp_lib</a> &#x00BB; Slurp_cohttp</nav><h1>Module <code>Slurp_cohttp</code></h1><p>Slurp Cohttp server definitions.</p><h2 id="quickstart"><a href="#quickstart" class="anchor"></a>Quickstart</h2><p>To use slurp with the cohttp backend, you can simply call the <code>slurp-cohttp</code> binary coming with the so called package. However, if you need to tune the server implementation, you can use the server extensible definition inherited from <span class="xref-unresolved" title="unresolved reference to &quot;Clim.cli&quot;"><code>Clim</code>.cli</span>.</p><h2 id="extension"><a href="#extension" class="anchor"></a>Extension</h2><p>Most of the time, the server is launched together with other services that may already bind the slurp default option names. To avoid any conflict, the server CLI is defined from <span class="xref-unresolved" title="unresolved reference to &quot;Clim.cli&quot;"><code>Clim</code>.cli</span> and option names are overloadable methods.</p><p>The parameters names are defined with string lists following the <a href="https://erratique.ch/logiciel/cmdliner">Cmdliner</a> convention: short names are one char strings and others strings are long names. For example, if you want to rename the &quot;--port&quot; option, simply reinstanciate the server definition with a custom configuration:</p><pre><code class="ml">open Slurp_cohttp
+
+let my_server = object
+  inherit cohttp
+  method! port_names = [&quot;my-port&quot;]
+end
+
+let _ = Lwt_main.run my_server#run</code></pre><p>the other extension oftenly used is adding new options for various services added with the custom REST API. Adding options is allowed by the <a href="https://github.com/Ninjapouet/clim">Clim</a> interface. For example, we can add the option <code>foo</code> simply by registering it with:</p><pre><code class="ml">let my_server = object
+   ...
+   val foo = 42
+   initializer
+     self#arg Clim.(value @@ opt
+      ~doc:&quot;My awesome option&quot;
+      int
+      42
+      [&quot;foo&quot;]) (fun v -&gt; foo &lt;- v)
+   ...
+end</code></pre><p><code>foo</code> will then contain the <code>foo</code> option value at runtime.</p><p>More subtle extensions are also available by redefining the <code>My_server.command</code> value to add some custom behavior to the resulting binary. For example:</p><pre><code class="ml">let my_server = object(self)
+  inherit cohttp as super
+  ...
+  method! entrypoint () =
+     Lwt.join [
+       super#entrypoint ();
+       (fun () -&gt; print_endline &quot;Hello there!&quot;; Lwt.return_unit);
+     ]
+  ...</code></pre><p>will add the trace &quot;Hello there!&quot; on server run.</p><h2 id="api"><a href="#api" class="anchor"></a>API</h2></header><dl><dt class="spec class" id="class-cohttp"><a href="#class-cohttp" class="anchor"></a><code><span class="keyword">class</span>  <a href="class-cohttp/index.html">cohttp</a> : <span class="keyword">object</span> ... <span class="keyword">end</span></code></dt><dd><p>A customizable SLURP cohttp definition.</p></dd></dl></div></body></html>
