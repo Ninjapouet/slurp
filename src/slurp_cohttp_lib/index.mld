@@ -1,0 +1,14 @@
+{1 Library slurp_cohttp_lib}
+
+
+
+
+
+This is the description
+of the slurp OCaml project
+
+
+
+This library exposes the following toplevel modules:
+{!modules:Slurp_cohttp}
+

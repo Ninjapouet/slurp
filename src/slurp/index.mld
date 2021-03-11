@@ -1,0 +1,13 @@
+{1 Library slurp}
+
+
+
+
+
+This is the description
+of the slurp OCaml project
+
+
+
+The entry point of this library is the module: {!Slurp}.
+

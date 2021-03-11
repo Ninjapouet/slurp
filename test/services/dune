@@ -1,4 +1,10 @@
 (library
+ (name kill)
+ (modules kill)
+ (libraries slurp lwt.unix)
+ (preprocess (pps lwt_ppx)))
+
+(library
  (name sum)
  (modules sum)
  (libraries slurp))
