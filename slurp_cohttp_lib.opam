@@ -14,6 +14,11 @@ of the slurp OCaml project
 """
 authors: ["Julien BLOND <julien.blond@bertin.fr>"]
 maintainer: ["Julien BLOND <julien.blond@bertin.fr>"]
+homepage: "https://Ninjapouet.github.io/slurp"
+doc: "https://Ninjapouet.github.io/slurp/sphinx"
+bug-reports: "https://github.com/Ninjapouet/slurp/issues"
+dev-repo: "git+https://github.com/Ninjapouet/slurp.git"
+tags: "org:Ninjapouet"
 build: [
   ["dune" "subst"] {dev}
   ["sh" "-c" "./scripts/before.sh build '%{name}%'"]

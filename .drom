@@ -2,7 +2,7 @@
 
 # hash of toml configuration files
 # used for generation of all files
-4b9d2d6c568dbb924e85ad7353c99b22:.
+893520ac28c3720b3117d496c3c7d22c:.
 # end context for .
 
 # begin context for .github/workflows/doc-deploy.yml
@@ -67,7 +67,7 @@ e739f3026aa997af4026bc428f4c9ef6:docs/favicon.png
 
 # begin context for docs/index.html
 # file docs/index.html
-e458bb25445569c07d2b1df45c7c36ff:docs/index.html
+60e699c3399273e30bf464c3db0abab0:docs/index.html
 # end context for docs/index.html
 
 # begin context for docs/sphinx/index.html
@@ -112,17 +112,17 @@ bb3a9d286f0dc64021db4194427263ee:scripts/copy-bin.sh
 
 # begin context for slurp.opam
 # file slurp.opam
-5b1a5bc502c3733f6d3cb5ee8b504e1b:slurp.opam
+147eb699adb9175af58ff3dc96415fc2:slurp.opam
 # end context for slurp.opam
 
 # begin context for slurp_cohttp.opam
 # file slurp_cohttp.opam
-905d3d59453e25ea04fb8abace03bee5:slurp_cohttp.opam
+4ce02a9a65cef64807445cf7ebc1bf43:slurp_cohttp.opam
 # end context for slurp_cohttp.opam
 
 # begin context for slurp_cohttp_lib.opam
 # file slurp_cohttp_lib.opam
-87c59ba91cc72c240609d10d05959602:slurp_cohttp_lib.opam
+126d88bda6894bab3cca63f35927e9d5:slurp_cohttp_lib.opam
 # end context for slurp_cohttp_lib.opam
 
 # begin context for sphinx/_static/css/fixes.css
@@ -142,7 +142,7 @@ b4fe1057297c61f10c75f4c7b7fa75fa:sphinx/about.rst
 
 # begin context for sphinx/index.rst
 # file sphinx/index.rst
-6ea5d24e583019178f15e465f06e52c0:sphinx/index.rst
+8f2c5bba4f799b5df781d006b49b0782:sphinx/index.rst
 # end context for sphinx/index.rst
 
 # begin context for sphinx/install.rst

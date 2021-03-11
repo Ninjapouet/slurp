@@ -10,9 +10,13 @@ Welcome to slurp
    :maxdepth: 2
    :caption: Documentation
 
+   Home <https://Ninjapouet.github.io/slurp>
    about
    install
+   API doc <https://Ninjapouet.github.io/slurp/doc>
    license
+
+   Devel and Issues on Github <https://github.com/Ninjapouet/slurp>
 
 
 Indices and tables
